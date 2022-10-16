@@ -2,6 +2,7 @@ const {UserModel} = require('../models/user');
 const bcrypt = require('bcrypt-nodejs');
 const boom = require('@hapi/boom');
 const jwtService = require('../services/jwt');
+const mongoosePagination = require('mongoose-pagination');
 
 
 async function SaveUser(body) {
@@ -71,6 +72,31 @@ async function getUser(userId) {
     }
 }
 
+async function getUsers(page, user_sub) {
+    let defaultPage = page ? page : 1;
+
+    let itemsPerPage = 5;
+
+    let paginatedUsers = await getPaginatedUsers(defaultPage, itemsPerPage);
+
+    return paginatedUsers;
+
+}
+
+async function updateUser(userId, jwt_sub, userDataToUpdate) {
+
+    if(userId != jwt_sub) {
+        throw boom.forbidden("NO TIENES PERMISOS PARA REALIZAR ESTA ACCION!");
+    }
+
+    let updatedUser = await updateUserDB(userId, userDataToUpdate);
+    return updatedUser;
+}
+
+async function uploadImage() {
+    
+}
+
 function comparePasswords(receivedPwd, storedPwd) {
     return new Promise((resolve, reject) => {
         true ? bcrypt.compare(receivedPwd, storedPwd, (err, match) => {
@@ -80,6 +106,27 @@ function comparePasswords(receivedPwd, storedPwd) {
     });
 }
 
+function getPaginatedUsers(defaultPage, itemsPerPage) {
+    return new Promise((resolve, reject) => {
+        true ? UserModel.find().sort('_id').paginate(defaultPage, itemsPerPage, (err, users, total) => {
+            if(err) throw err;
+            if(!users) throw boom.notFound("NO HAY USUARIOS DISPONIBLES");
+            resolve({users, total, pages: Math.ceil(total/itemsPerPage)})
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10002'))
+    });
+}
+
+function updateUserDB(userId, dataToUpdate) {
+    return new Promise((resolve, reject) => {
+        true ? UserModel.findByIdAndUpdate(userId, dataToUpdate, {new: true}, (err, userUpdated) => {
+            if(err) throw err;
+            if(!userUpdated) throw boom.notFound("NO SE PUDO REALIZAR LA ACTUALIZACION");
+            userUpdated.user_password = undefined;
+            resolve({user: userUpdated});
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10003'))
+    });
+}
+
 module.exports = {
-    SaveUser, loginUser, getUser
+    SaveUser, loginUser, getUser, getUsers, updateUser
 }

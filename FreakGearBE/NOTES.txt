@@ -1,2 +1,2 @@
-npm i bcrypt-nodejs express connect-multiparty mongoose jwt-simple moment cors @hapi/boom joi joigoose
+npm i bcrypt-nodejs express connect-multiparty mongoose mongoose-pagination jwt-simple moment cors @hapi/boom joi joigoose
 npm i nodemon -D

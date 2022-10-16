@@ -19,6 +19,15 @@ const UserJoiSchema = Joi.object({
     user_image: Joi.string()
 });
 
+const UpdateUserJoiSchema = Joi.object({
+    user_name: name_def,
+    user_surname: name_def,
+    user_nickname: name_def,
+    user_email: email,
+    user_role: role,
+    user_image: Joi.string()
+}).min(1);
+
 const UserLoginJoiSchema = Joi.object({
     user_email: email.required(),
     user_password: password.required(),
@@ -29,7 +38,11 @@ const getUserSchema = Joi.object({
     user_id: Joi.required()
 });
 
+const getPaginatedUsersSchema = Joi.object({
+    page: Joi.number()
+});
+
 const UserSchema = new Schema(Joigoose.convert(UserJoiSchema));
 const UserModel = mongoose.model('User', UserSchema);
 
-module.exports = { UserModel, UserJoiSchema, UserLoginJoiSchema, getUserSchema};
+module.exports = { UserModel, UserJoiSchema, UserLoginJoiSchema, getUserSchema, getPaginatedUsersSchema, UpdateUserJoiSchema};
