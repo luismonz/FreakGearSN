@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt-nodejs');
 const boom = require('@hapi/boom');
 const jwtService = require('../services/jwt');
 const mongoosePagination = require('mongoose-pagination');
+const fs = require('fs');
 
 
 async function SaveUser(body) {
@@ -13,7 +14,7 @@ async function SaveUser(body) {
     user.user_nickname = body.user_nickname;
     user.user_email = body.user_email;
     user.user_role = body.user_role;
-    user.user_image = body.user_image;
+    user.user_image = body.user_image || "";
 
     const oneUser = await UserModel.find({$or: [
         {user_email: user.user_email.toLowerCase()},
@@ -66,6 +67,7 @@ async function getUser(userId) {
         if(foundUser) {
             return foundUser;
         }
+        throw boom.notFound('USER DOES NOT EXISTS!');
     }
     catch(err) {
         throw boom.notFound('USER DOES NOT EXISTS!');
@@ -93,8 +95,30 @@ async function updateUser(userId, jwt_sub, userDataToUpdate) {
     return updatedUser;
 }
 
-async function uploadImage() {
+async function uploadImage(userId, sub, fileReq) {
+
+    if(userId != sub) {
+        throw boom.forbidden("NO TIENES PERMISOS PARA REALIZAR ESTA ACCION!");
+    }
+
+    if(fileReq) {
+        let file_path = fileReq.image.path;
+        let file_name = file_path.split('\\')[2];
+
+        let updatedUser = updateUserImageDB(userId, file_name);
+        
+        return updatedUser;
+    }
+
+    throw boom.notFound("NO HAY IMAGENES PARA SUBIR");
     
+}
+
+async function getImageFile(imageFile) {
+    const path_file = './uploads/users/'+imageFile;
+    let file_name = await getImageFilePromise(path_file);
+    if(file_name) return file_name;
+    throw boom.notFound("IMAGEN NO EXISTE");
 }
 
 function comparePasswords(receivedPwd, storedPwd) {
@@ -110,6 +134,7 @@ function getPaginatedUsers(defaultPage, itemsPerPage) {
     return new Promise((resolve, reject) => {
         true ? UserModel.find().sort('_id').paginate(defaultPage, itemsPerPage, (err, users, total) => {
             if(err) throw err;
+            users.forEach(user => { user.user_password = undefined; });
             if(!users) throw boom.notFound("NO HAY USUARIOS DISPONIBLES");
             resolve({users, total, pages: Math.ceil(total/itemsPerPage)})
         }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10002'))
@@ -127,6 +152,27 @@ function updateUserDB(userId, dataToUpdate) {
     });
 }
 
+function updateUserImageDB(userId, file_name) {
+    return new Promise((resolve, reject) => {
+        true ? UserModel.findByIdAndUpdate(userId, {user_image: file_name}, {new: true}, (err, userUpdated) => {
+            if(err) throw err;
+            if(!userUpdated) throw boom.notFound("NO SE PUDO REALIZAR LA ACTUALIZACION");
+            userUpdated.user_password = undefined;
+            resolve({user: userUpdated});
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10004'))
+    });
+}
+
+function getImageFilePromise(path_file) {
+    return new Promise((resolve, reject) => {
+        true ? fs.exists(path_file, (exists) => {
+            if(exists) {
+                resolve(path_file);
+            }
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10005'))
+    });
+}
+
 module.exports = {
-    SaveUser, loginUser, getUser, getUsers, updateUser
+    SaveUser, loginUser, getUser, getUsers, updateUser, uploadImage, getImageFile
 }

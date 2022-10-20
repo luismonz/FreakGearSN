@@ -16,7 +16,7 @@ const UserJoiSchema = Joi.object({
     user_email: email.required(),
     user_password: password.required(),
     user_role: role.required(),
-    user_image: Joi.string()
+    user_image: Joi.string().min(0)
 });
 
 const UpdateUserJoiSchema = Joi.object({
@@ -25,7 +25,7 @@ const UpdateUserJoiSchema = Joi.object({
     user_nickname: name_def,
     user_email: email,
     user_role: role,
-    user_image: Joi.string()
+    user_image: Joi.string().min(0)
 }).min(1);
 
 const UserLoginJoiSchema = Joi.object({

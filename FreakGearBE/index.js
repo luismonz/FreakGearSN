@@ -4,6 +4,16 @@ const mongoose = require('mongoose');
 const routerApi = require('./routes');
 const {config} = require('./config/config');
 const { logErrors, errorHandler, boomErrorHandler } = require('./middlewares/error.handler')
+const fs = require('fs');
+const imagesDir = './uploads/users';
+
+function createImageDirectory() { 
+    if(!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir, { recursive: true });
+    }
+}
+
+createImageDirectory();
 
 const port = config.port || 3000;
 

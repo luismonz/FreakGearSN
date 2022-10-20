@@ -1,8 +1,11 @@
 const express = require("express");
 const UserController = require('../controllers/user.controller');
-const { UserJoiSchema, UserLoginJoiSchema, getUserSchema, getPaginatedUsersSchema, UpdateUserJoiSchema } = require('../models/user');
-const validatorHandler = require('../middlewares/validator.handler');
+const {getUserSchema, getPaginatedUsersSchema, UpdateUserJoiSchema } = require('../models/user');
+const { validatorHandler, imageValidatorHandler } = require('../middlewares/validator.handler');
 const router = express.Router();
+const multipart = require('connect-multiparty');
+const md_upload = multipart({uploadDir: './uploads/users'});
+
 
 router.get('/testing', async(req, res, next) => {
     try {
@@ -12,28 +15,6 @@ router.get('/testing', async(req, res, next) => {
         next(err);
     }
 })
-
-router.post('/register', validatorHandler(UserJoiSchema, 'body'), async(req, res, next) => {
-    try {
-        const body = req.body;
-        const newuser = await UserController.SaveUser(body);
-        res.status(201).json(newuser);
-    }
-    catch(error) {
-        next(error);
-    }
-});
-
-router.post('/login', validatorHandler(UserLoginJoiSchema, 'body'), async(req, res, next) => {
-    try {
-        const body = req.body;
-        const loggedUser = await UserController.loginUser(body);
-        res.status(201).json(loggedUser);
-    }
-    catch(error) {
-        next(error);
-    }
-});
 
 router.get('/user/:user_id', validatorHandler(getUserSchema, 'params'), async(req, res, next) => {
     try {
@@ -66,6 +47,19 @@ router.patch('/update-user/:user_id', validatorHandler(getUserSchema, 'params'),
         delete userBody.user_password;
         const updatedUser = await UserController.updateUser(userId, sub, userBody);
         res.status(201).json(updatedUser);
+    }
+    catch(error) {
+        next(error);
+    }
+});
+
+router.post('/upload-image/:user_id', validatorHandler(getUserSchema, 'params'), md_upload, imageValidatorHandler(), async(req, res, next) => {
+    try {
+        const userId = req.params.user_id;
+        const sub = req.user.sub;
+        const fileReq = req.files;
+        const uploadedImage = await UserController.uploadImage(userId, sub, fileReq);
+        res.status(201).json(uploadedImage);
     }
     catch(error) {
         next(error);
