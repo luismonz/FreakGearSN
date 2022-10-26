@@ -1,4 +1,6 @@
-const {UserModel} = require('../models/user');
+const { UserModel } = require('../models/user');
+const { FollowModel } = require('../models/follow.js');
+const { PostModel } = require('../models/posts');
 const bcrypt = require('bcrypt-nodejs');
 const boom = require('@hapi/boom');
 const jwtService = require('../services/jwt');
@@ -61,17 +63,20 @@ async function loginUser(body) {
     throw boom.notFound("USUARIO NO REGISTRADO!");
 }
 
-async function getUser(userId) {
-    try {
-        let foundUser = await UserModel.findById(userId);
-        if(foundUser) {
-            return foundUser;
-        }
+async function getUser(userId, sub) {
+    let foundUser = await UserModel.findById(userId);
+
+    if (!foundUser) {
         throw boom.notFound('USER DOES NOT EXISTS!');
     }
-    catch(err) {
-        throw boom.notFound('USER DOES NOT EXISTS!');
-    }
+
+    foundUser.user_password = undefined;
+
+    // CHECK IF YOU FOLLOW THAT USER
+    let getFollow = await FollowModel.findOne({ "fw_user": sub, "fw_followed": userId });
+    let isFollowingMe = await FollowModel.findOne({ "fw_user": userId, "fw_followed": sub });
+
+    return { foundUser, getFollow, isFollowingMe };
 }
 
 async function getUsers(page, user_sub) {
@@ -79,9 +84,11 @@ async function getUsers(page, user_sub) {
 
     let itemsPerPage = 5;
 
-    let paginatedUsers = await getPaginatedUsers(defaultPage, itemsPerPage);
+    let users_follow_me = await followedUsersPagination(user_sub);
+    let users_following = await followingUsersPagination(user_sub);
+    let paginatedUsers = await getPaginatedUsers(defaultPage, itemsPerPage, user_sub);
 
-    return paginatedUsers;
+    return {paginatedUsers, users_following, users_follow_me};
 
 }
 
@@ -114,29 +121,62 @@ async function uploadImage(userId, sub, fileReq) {
     
 }
 
-async function getImageFile(imageFile) {
-    const path_file = './uploads/users/'+imageFile;
+async function getImageFile(imageFile, path) {
+    const path_file = path+imageFile;
     let file_name = await getImageFilePromise(path_file);
     if(file_name) return file_name;
     throw boom.notFound("IMAGEN NO EXISTE");
 }
 
+async function getCounters(user_id) {
+    let getCountFollowVar = await getCountFollow(user_id);
+    let getCountFollowedVar = await getCountFollowed(user_id);
+    let postsCount = await postsCounting(user_id);
+
+    return {
+        following: getCountFollowVar,
+        followed: getCountFollowedVar,
+        posts: postsCount
+    }
+
+}
+
+async function getCountFollow(user_id) {
+    return new Promise((resolve, reject) => {
+        true ? FollowModel.count({"fw_user": user_id}).exec((err, count) => {
+            if(err) reject(err);
+            resolve(count);
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10008'))
+    });
+}
+
+async function getCountFollowed(user_id) {
+    return new Promise((resolve, reject) => {
+        true ? FollowModel.count({"fw_followed": user_id}).exec((err, count) => {
+            if(err) reject(err);
+            resolve(count);
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10008'))
+    });
+}
+
 function comparePasswords(receivedPwd, storedPwd) {
     return new Promise((resolve, reject) => {
         true ? bcrypt.compare(receivedPwd, storedPwd, (err, match) => {
-            if(err) throw err;
+            if(err) reject(err);
             resolve(match)
         }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10001'))
     });
 }
 
-function getPaginatedUsers(defaultPage, itemsPerPage) {
+async function getPaginatedUsers(defaultPage, itemsPerPage, sub) {
     return new Promise((resolve, reject) => {
         true ? UserModel.find().sort('_id').paginate(defaultPage, itemsPerPage, (err, users, total) => {
-            if(err) throw err;
+            if(err) reject(err);
+            if(!users) reject(boom.notFound("NO HAY USUARIOS DISPONIBLES"));
             users.forEach(user => { user.user_password = undefined; });
-            if(!users) throw boom.notFound("NO HAY USUARIOS DISPONIBLES");
-            resolve({users, total, pages: Math.ceil(total/itemsPerPage)})
+            resolve({users,
+                total: users.length, 
+                pages: parseInt(defaultPage)})
         }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10002'))
     });
 }
@@ -144,8 +184,8 @@ function getPaginatedUsers(defaultPage, itemsPerPage) {
 function updateUserDB(userId, dataToUpdate) {
     return new Promise((resolve, reject) => {
         true ? UserModel.findByIdAndUpdate(userId, dataToUpdate, {new: true}, (err, userUpdated) => {
-            if(err) throw err;
-            if(!userUpdated) throw boom.notFound("NO SE PUDO REALIZAR LA ACTUALIZACION");
+            if(err) reject(err);
+            if(!userUpdated) reject(boom.notFound("NO SE PUDO REALIZAR LA ACTUALIZACION"));
             userUpdated.user_password = undefined;
             resolve({user: userUpdated});
         }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10003'))
@@ -155,8 +195,8 @@ function updateUserDB(userId, dataToUpdate) {
 function updateUserImageDB(userId, file_name) {
     return new Promise((resolve, reject) => {
         true ? UserModel.findByIdAndUpdate(userId, {user_image: file_name}, {new: true}, (err, userUpdated) => {
-            if(err) throw err;
-            if(!userUpdated) throw boom.notFound("NO SE PUDO REALIZAR LA ACTUALIZACION");
+            if(err) reject(err);
+            if(!userUpdated) reject(boom.notFound("NO SE PUDO REALIZAR LA ACTUALIZACION"));
             userUpdated.user_password = undefined;
             resolve({user: userUpdated});
         }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10004'))
@@ -169,10 +209,45 @@ function getImageFilePromise(path_file) {
             if(exists) {
                 resolve(path_file);
             }
+            resolve(undefined);
         }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10005'))
     });
 }
 
+async function followingUsersPagination(user_id) {
+    return new Promise((resolve, reject) => {
+        true ? FollowModel.find({"fw_user":user_id}).select({'_id':0, '__v':0, 'fw_user':0}).exec((err, follows) => {
+            let follows_clean = [];
+            follows.forEach((follow) => {
+                console.log(follow);
+                follows_clean.push(follow.fw_followed);
+            });
+            resolve(follows_clean);
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10006'))
+    });
+}
+
+async function followedUsersPagination(user_id) {
+    return new Promise((resolve, reject) => {
+        true ? FollowModel.find({"fw_followed":user_id}).select({'_id':0, '__v':0, 'fw_followed':0}).exec((err, follows) => {
+            let follows_clean = [];
+            follows.forEach((follow) => {
+                follows_clean.push(follow.fw_user);
+            });
+            resolve(follows_clean);
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10007'))
+    });
+}
+
+async function postsCounting(user_id) {
+    return new Promise((resolve, reject) => {
+        true ? PostModel.count({"post_user":user_id}).exec((err, count) => {
+            if(err) reject(err);
+            resolve(count);
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10008'));
+    });
+}
+
 module.exports = {
-    SaveUser, loginUser, getUser, getUsers, updateUser, uploadImage, getImageFile
+    SaveUser, loginUser, getUser, getUsers, updateUser, uploadImage, getImageFile, getCounters
 }

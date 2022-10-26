@@ -8,9 +8,13 @@ const FollowSchema = Schema({
 });
 
 const FollowedBodySchema = Joi.object({
-    followed: Joi.required()
+    followed: Joi.string().hex().length(24).required()
+});
+
+const queryFollowSchema = Joi.object({
+    page: Joi.number()
 });
 
 const FollowModel = mongoose.model('Follow', FollowSchema)
 
-module.exports = { FollowModel, FollowedBodySchema };
+module.exports = { FollowModel, FollowedBodySchema, queryFollowSchema };

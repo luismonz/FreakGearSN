@@ -31,7 +31,18 @@ router.post('/login', validatorHandler(UserLoginJoiSchema, 'body'), async(req, r
 router.get('/get-image-user/:imageFile', validatorHandler(uploadImageSchema, 'params'), async(req, res, next) => {
     try {
         const imageFile = req.params.imageFile;
-        const uploadedImage = await UserController.getImageFile(imageFile);
+        const uploadedImage = await UserController.getImageFile(imageFile, './uploads/users/');
+        res.sendFile(path.resolve(uploadedImage))
+    }
+    catch(error) {
+        next(error);
+    }
+});
+
+router.get('/get-image-post/:imageFile', validatorHandler(uploadImageSchema, 'params'), async(req, res, next) => {
+    try {
+        const imageFile = req.params.imageFile;
+        const uploadedImage = await UserController.getImageFile(imageFile, './uploads/posts/');
         res.sendFile(path.resolve(uploadedImage))
     }
     catch(error) {

@@ -6,10 +6,16 @@ let secret = 'some_unknown_key';
 exports.ensureAuth = (req, res, next) => {
     if(!req.headers.authorization) next(boom.forbidden('PETITION HAS NO AUTHENTICATION HEADER'));
     let token = req.headers.authorization.replace(/['"]+/g, '');
+
+    if (token && token.startsWith('Bearer ')) {
+        // Remove "Bearer " from the authHeader
+        token = token.slice(7, token.length);
+    }
+
     let payload = undefined;
     try {
         payload = jwt.decode(token, secret);
-        if(payload.exp <= moment.unix()) {
+        if(payload.exp <= moment().unix()) {
             next(boom.unauthorized('TOKEN HAS EXPIRED'));
         }
     }

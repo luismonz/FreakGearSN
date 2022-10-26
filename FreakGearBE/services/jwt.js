@@ -12,7 +12,7 @@ exports.createToken = (user) => {
         role: user.user_role,
         image: user.user_image,
         iat: moment().unix(),
-        exp: moment().add(30, 'days').unix()
+        exp: moment().add(2, 'hour').unix()
     };
 
     return jwt.encode(payload, secret);

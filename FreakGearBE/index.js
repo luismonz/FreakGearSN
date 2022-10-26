@@ -5,15 +5,17 @@ const routerApi = require('./routes');
 const {config} = require('./config/config');
 const { logErrors, errorHandler, boomErrorHandler } = require('./middlewares/error.handler')
 const fs = require('fs');
-const imagesDir = './uploads/users';
+const imagesUserDir = './uploads/users';
+const imagesPostsDir = './uploads/posts';
 
-function createImageDirectory() { 
-    if(!fs.existsSync(imagesDir)) {
-        fs.mkdirSync(imagesDir, { recursive: true });
+function createImageDirectory(dirToCreate) { 
+    if(!fs.existsSync(dirToCreate)) {
+        fs.mkdirSync(dirToCreate, { recursive: true });
     }
 }
 
-createImageDirectory();
+createImageDirectory(imagesUserDir);
+createImageDirectory(imagesPostsDir);
 
 const port = config.port || 3000;
 
