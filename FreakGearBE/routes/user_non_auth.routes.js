@@ -1,12 +1,12 @@
 const express = require("express");
 const UserController = require('../controllers/user.controller');
-const { UserJoiSchema, UserLoginJoiSchema} = require('../models/user');
+const { UserLoginJoiSchema, CreateUserJoiSchema } = require('../models/user');
 const { uploadImageSchema } = require('../models/image');
 const {validatorHandler} = require('../middlewares/validator.handler');
 const router = express.Router();
 const path = require('path');
 
-router.post('/register', validatorHandler(UserJoiSchema, 'body'), async(req, res, next) => {
+router.post('/register', validatorHandler(CreateUserJoiSchema, 'body'), async(req, res, next) => {
     try {
         const body = req.body;
         const newuser = await UserController.SaveUser(body);

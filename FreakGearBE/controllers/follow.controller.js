@@ -13,7 +13,7 @@ async function saveFollow(body, sub) {
     if(body.followed == sub) throw boom.badData("NO PUEDES SEGUIRTE A TI MISMO");
     const findUser = await UserModel.findOne({_id: body.followed});
     if(!findUser) throw boom.notFound("USUARIO QUE INTENTA SEGUIR, NO EXISTE.");
-    const findFollower = await FollowModel.findOne({fw_followed: body.followed});
+    const findFollower = await FollowModel.findOne({fw_followed: body.followed, fw_user: sub});
     if(findFollower) throw boom.badData("YA SIGUES A ESTE USUARIO");
     let storedFollower = await saveFollowerDB(body, sub);
     return storedFollower;

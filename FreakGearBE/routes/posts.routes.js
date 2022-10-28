@@ -5,7 +5,7 @@ const { validatorHandler, imageValidatorHandler } = require('../middlewares/vali
 const multipart = require('connect-multiparty');
 const md_upload = multipart({uploadDir: './uploads/posts'});
 const router = express.Router();
-const { PostBodySchema, getPaginatedPostsSchema, postIdSchema } = require('../models/posts');
+const { PostBodySchema, getPaginatedPostsSchema, postIdSchema, userPostIdSchema } = require('../models/posts');
 const PostController = require('../controllers/posts.controller');
 
 router.post('/', validatorHandler(PostBodySchema, 'body'), async(req, res, next) => {
@@ -19,10 +19,21 @@ router.post('/', validatorHandler(PostBodySchema, 'body'), async(req, res, next)
     }
 })
 
-router.get('/', validatorHandler(getPaginatedPostsSchema, 'query'), async(req, res, next) => {
+router.get('/people-followed', validatorHandler(getPaginatedPostsSchema, 'query'), async(req, res, next) => {
     try {
         const userId = req.user.sub;
         const getPosts = await PostController.getPostsFromPeopleIFollow(userId, req.query);
+        res.status(200).json(getPosts);
+    }
+    catch(err) {
+        next(err);
+    }
+})
+
+router.get('/my-posts/:user_id', validatorHandler(getPaginatedPostsSchema, 'query'), validatorHandler(userPostIdSchema, 'params'), async(req, res, next) => {
+    try {
+        const userId = req.params.user_id;
+        const getPosts = await PostController.getMyPosts(userId, req.query);
         res.status(200).json(getPosts);
     }
     catch(err) {

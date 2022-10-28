@@ -9,7 +9,8 @@ async function savePost(userId, body) {
     let post = new PostModel();
     post.post_user = userId;
     post.post_text = body.post_text;
-    post.post_file = 'null';
+    if(body.post_file) post.post_file = body.post_file;
+    else post.post_file = "";
     post.post_created_at = moment().unix();
     let postStored = await savePostDB(post);
     return postStored;
@@ -22,6 +23,24 @@ async function getPostsFromPeopleIFollow(userId, query) {
 
     let getPeople = await getPeopleIFollow(userId);
     let getPosts = await getPostByPeopleIFollow(userId, getPeople, page, itemsPerPage);
+
+    return getPosts;
+
+}
+
+async function getMyPosts(userId, query) {
+
+    let foundUser = await UserModel.findById(userId);
+
+    if (!foundUser) {
+        throw boom.notFound('USER DOES NOT EXISTS!');
+    }
+
+    let page = query.page ? query.page : 1;
+
+    let itemsPerPage = 10;
+
+    let getPosts = await getPostsFromUser(userId, page, itemsPerPage);
 
     return getPosts;
 
@@ -97,6 +116,18 @@ function getPostByPeopleIFollow(userId, peopleIFollow, page, itemsPerPage) {
     });
 }
 
+function getPostsFromUser(userId, page, itemsPerPage) {
+    return new Promise((resolve, reject) => {
+        true ? PostModel.find({post_user: userId}).sort('post_created_at').populate('post_user')
+                                .paginate(page, itemsPerPage, (err, posts, totalPosts) => {
+                                    if(err) reject(err);
+                                    if(!posts) reject(boom.notFound("NO SE ENCONTRARON POSTS"));
+                                    posts.forEach(post => post.post_user.user_password = undefined);
+                                    resolve({total_items: totalPosts, posts, page: parseInt(page), TotalPages: Math.ceil(totalPosts/itemsPerPage)});
+    }) : reject(new Error("HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 30003"));
+    });
+}
+
 async function getPostFromDB(postId) {
     return new Promise((resolve, reject) => {
         true ? PostModel.findById(postId, (err, post) => {
@@ -128,4 +159,4 @@ function updateUserImageDB(postId, file_name) {
     });
 }
 
-module.exports = { savePost, getPostsFromPeopleIFollow, getPostById, deletePostById, uploadImagePost }
+module.exports = { savePost, getPostsFromPeopleIFollow, getPostById, deletePostById, uploadImagePost, getMyPosts }

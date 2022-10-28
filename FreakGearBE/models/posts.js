@@ -23,6 +23,10 @@ const postIdSchema = Joi.object({
     post_id: Joi.string().hex().length(24)
 })
 
+const userPostIdSchema = Joi.object({
+    user_id: Joi.string().hex().length(24)
+})
+
 const PostModel = mongoose.model('Posts', PostSchema)
 
-module.exports = {PostModel, PostBodySchema, getPaginatedPostsSchema, postIdSchema };
+module.exports = {PostModel, PostBodySchema, getPaginatedPostsSchema, postIdSchema, userPostIdSchema };

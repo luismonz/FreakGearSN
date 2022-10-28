@@ -12,11 +12,19 @@ async function SaveUser(body) {
 
     const user = new UserModel();
     user.user_name = body.user_name;
-    user.user_surname = body.user_surname;
     user.user_nickname = body.user_nickname;
     user.user_email = body.user_email;
-    user.user_role = body.user_role;
-    user.user_image = body.user_image || "";
+    user.user_birthdate = body.user_birthdate;
+
+    if(!body.user_role) user.user_role = "ROLE_USER";
+    else user.user_role = body.user_role;
+
+    if(!body.user_image) user.user_image = "defaultimg";
+    else user.user_image = body.user_image;
+    
+    user.user_bio = "";
+    user.user_uid_fb = "";
+    user.user_visits_today = 0;
 
     const oneUser = await UserModel.find({$or: [
         {user_email: user.user_email.toLowerCase()},
@@ -65,18 +73,26 @@ async function loginUser(body) {
 
 async function getUser(userId, sub) {
     let foundUser = await UserModel.findById(userId);
+    let DoIFollow = false;
+    let DoFollowsMe = false;
 
     if (!foundUser) {
         throw boom.notFound('USER DOES NOT EXISTS!');
     }
 
-    foundUser.user_password = undefined;
+    foundUser.user_visits_today += 1;
+
+    let updatedUser = await updateUserDB(userId, foundUser);
+
+    updatedUser.user_password = undefined;
 
     // CHECK IF YOU FOLLOW THAT USER
-    let getFollow = await FollowModel.findOne({ "fw_user": sub, "fw_followed": userId });
-    let isFollowingMe = await FollowModel.findOne({ "fw_user": userId, "fw_followed": sub });
+    let FollowedBy = await FollowModel.findOne({ "fw_user": sub, "fw_followed": userId });
+    let FollowsMe = await FollowModel.findOne({ "fw_user": userId, "fw_followed": sub });
+    if(FollowedBy) DoIFollow = true;
+    if(FollowsMe) DoFollowsMe = true;
 
-    return { foundUser, getFollow, isFollowingMe };
+    return { userProfile: updatedUser, DoIFollow, DoFollowsMe };
 }
 
 async function getUsers(page, user_sub) {
@@ -96,6 +112,12 @@ async function updateUser(userId, jwt_sub, userDataToUpdate) {
 
     if(userId != jwt_sub) {
         throw boom.forbidden("NO TIENES PERMISOS PARA REALIZAR ESTA ACCION!");
+    }
+
+    let foundUser = await UserModel.findById(userId);
+
+    if (!foundUser) {
+        throw boom.notFound('USER DOES NOT EXISTS!');
     }
 
     let updatedUser = await updateUserDB(userId, userDataToUpdate);
@@ -129,14 +151,23 @@ async function getImageFile(imageFile, path) {
 }
 
 async function getCounters(user_id) {
+
+    let foundUser = await UserModel.findById(user_id);
+
+    if (!foundUser) {
+        throw boom.notFound('USER DOES NOT EXISTS!');
+    }
+
     let getCountFollowVar = await getCountFollow(user_id);
     let getCountFollowedVar = await getCountFollowed(user_id);
     let postsCount = await postsCounting(user_id);
+    let visitsToday = foundUser.user_visits_today;
 
     return {
         following: getCountFollowVar,
         followed: getCountFollowedVar,
-        posts: postsCount
+        posts: postsCount,
+        visitsToday
     }
 
 }
