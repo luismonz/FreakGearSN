@@ -32,6 +32,7 @@ const CreateUserJoiSchema = Joi.object({
     user_email: email.required(),
     user_password: password.required(),
     user_image: Joi.string().min(1),
+    user_uid_fb: Joi.string().min(0),
     user_role: role
 });
 

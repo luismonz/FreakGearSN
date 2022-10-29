@@ -19,9 +19,9 @@ async function SaveUser(body) {
     if(!body.user_role) user.user_role = "ROLE_USER";
     else user.user_role = body.user_role;
 
-    if(!body.user_image) user.user_image = "defaultimg";
-    else user.user_image = body.user_image;
-    
+    if(body.user_image) user.user_image = body.user_image;
+    else user.user_image = "";
+
     user.user_bio = "";
     user.user_uid_fb = "";
     user.user_visits_today = 0;

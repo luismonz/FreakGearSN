@@ -76,7 +76,7 @@ function saveFollowerDB(body, sub) {
 
 function deleteFollowerDB(userId, followedId) {
     return new Promise((resolve, reject) => {
-        true ? FollowModel.find({'fw_user': userId, 'fw_followed': followedId}).remove(err => {
+        true ? FollowModel.findOne({_id: followedId}).remove(err => {
             if(err) reject(err);
             resolve({follow_id: followedId});
         }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 20002'));
