@@ -15,6 +15,11 @@ const PostBodySchema = Joi.object({
     post_created_at: Joi.string()
 });
 
+const PatchBodySchema = Joi.object({
+    post_text: Joi.string().min(1).max(500),
+    post_file: Joi.string()
+}).min(1);
+
 const getPaginatedPostsSchema = Joi.object({
     page: Joi.number()
 });
@@ -29,4 +34,4 @@ const userPostIdSchema = Joi.object({
 
 const PostModel = mongoose.model('Posts', PostSchema)
 
-module.exports = {PostModel, PostBodySchema, getPaginatedPostsSchema, postIdSchema, userPostIdSchema };
+module.exports = {PostModel, PostBodySchema, getPaginatedPostsSchema, postIdSchema, userPostIdSchema, PatchBodySchema };

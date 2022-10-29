@@ -63,7 +63,13 @@ const getPaginatedUsersSchema = Joi.object({
     page: Joi.number()
 });
 
+const getUsersCoincidencesSchema = Joi.object({
+    user_to_find: Joi.string().min(1).max(50)
+});
+
 const UserSchema = new Schema(Joigoose.convert(UserJoiSchema));
 const UserModel = mongoose.model('User', UserSchema);
 
-module.exports = { UserModel, UserJoiSchema, UserLoginJoiSchema, getUserSchema, getPaginatedUsersSchema, UpdateUserJoiSchema, nonRequiredUserId, CreateUserJoiSchema};
+module.exports = { UserModel, UserJoiSchema, UserLoginJoiSchema, getUserSchema, getPaginatedUsersSchema, UpdateUserJoiSchema, nonRequiredUserId, CreateUserJoiSchema,
+    getUsersCoincidencesSchema
+};

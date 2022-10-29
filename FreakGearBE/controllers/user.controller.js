@@ -80,7 +80,7 @@ async function getUser(userId, sub) {
         throw boom.notFound('USER DOES NOT EXISTS!');
     }
 
-    foundUser.user_visits_today += 1;
+    if(userId != sub) foundUser.user_visits_today += 1;
 
     let updatedUser = await updateUserDB(userId, foundUser);
 
@@ -89,7 +89,7 @@ async function getUser(userId, sub) {
     // CHECK IF YOU FOLLOW THAT USER
     let FollowedBy = await FollowModel.findOne({ "fw_user": sub, "fw_followed": userId });
     let FollowsMe = await FollowModel.findOne({ "fw_user": userId, "fw_followed": sub });
-    if(FollowedBy) DoIFollow = true;
+    if(FollowedBy) DoIFollow = { follow: true, follow_id: FollowedBy._id };
     if(FollowsMe) DoFollowsMe = true;
 
     return { userProfile: updatedUser, DoIFollow, DoFollowsMe };
@@ -170,6 +170,35 @@ async function getCounters(user_id) {
         visitsToday
     }
 
+}
+
+async function getMostVisitedUsers() {
+    let users = await getMostVisitedUsersDB();
+    if(!users) throw boom.notFound("NO EXISTEN USUARIOS PARA HACER ESTO");
+    return users;
+}
+
+async function getCoincidencesUsers(user_to_find) {
+    defaultPage = 1;
+    itemsPerPage = 10;
+    let getCoincidences = await getCoincidencesUsersDB(user_to_find, defaultPage, itemsPerPage);
+    if(!getCoincidences) throw boom.notFound("NO HAY COINCIDENCIAS PARA TU BUSQUEDA");
+    return getCoincidences;
+}
+
+async function getCoincidencesUsersDB(user_to_find, defaultPage, itemsPerPage) {
+    const regex = new RegExp(user_to_find, 'i');
+    return new Promise((resolve, reject) => {
+        true ? UserModel.find({ $or: [ { user_name: {$regex: regex} }, { user_nickname: {$regex: regex} }, { user_email: {$regex: regex} } ] })
+                        .sort('_id').paginate(defaultPage, itemsPerPage, (err, users, total) => {
+            if(err) reject(err);
+            if(!users) reject(boom.notFound("NO HAY USUARIOS DISPONIBLES"));
+            users.forEach(user => { user.user_password = undefined; });
+            resolve({users,
+                total: users.length, 
+                pages: parseInt(defaultPage)})
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10002'))
+    });
 }
 
 async function getCountFollow(user_id) {
@@ -279,6 +308,18 @@ async function postsCounting(user_id) {
     });
 }
 
+async function getMostVisitedUsersDB() {
+    const sortUsers = {user_visits_today: -1};
+    return new Promise((resolve, reject) => {
+        true ? UserModel.find().sort(sortUsers).limit(5).exec((err, users) => {
+            if(err) reject(err);
+            if(!users) throw boom.notFound("NO SE ENCONTRARON USUARIOS");
+            users.forEach((user) => user.user_password = undefined);
+            resolve(users);
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10007'))
+    });
+}
+
 module.exports = {
-    SaveUser, loginUser, getUser, getUsers, updateUser, uploadImage, getImageFile, getCounters
+    SaveUser, loginUser, getUser, getUsers, updateUser, uploadImage, getImageFile, getCounters, getMostVisitedUsers, getCoincidencesUsers
 }

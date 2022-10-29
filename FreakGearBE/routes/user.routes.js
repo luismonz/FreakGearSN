@@ -1,6 +1,6 @@
 const express = require("express");
 const UserController = require('../controllers/user.controller');
-const {getUserSchema, getPaginatedUsersSchema, UpdateUserJoiSchema, nonRequiredUserId } = require('../models/user');
+const {getUserSchema, getPaginatedUsersSchema, UpdateUserJoiSchema, nonRequiredUserId, getUsersCoincidencesSchema } = require('../models/user');
 const { validatorHandler, imageValidatorHandler } = require('../middlewares/validator.handler');
 const router = express.Router();
 const multipart = require('connect-multiparty');
@@ -125,5 +125,25 @@ router.get('/user/get/counters/:user_id?', validatorHandler(nonRequiredUserId, '
     }
 });
 
+router.get('/user/search_user/:user_to_find', validatorHandler(getUsersCoincidencesSchema, 'params'), async(req, res, next) => {
+    try {
+        let userToFind = req.params.user_to_find;
+        const coincidencesLimit10 = await UserController.getCoincidencesUsers(userToFind);
+        res.status(201).json(coincidencesLimit10);
+    }
+    catch(error) {
+        next(error);
+    }
+});
+
+router.get('/get_most_visited_users', async(req, res, next) => {
+    try {
+        const users = await UserController.getMostVisitedUsers();
+        res.status(201).json(users);
+    }
+    catch(error) {
+        next(error);
+    }
+});
 
 module.exports = router;

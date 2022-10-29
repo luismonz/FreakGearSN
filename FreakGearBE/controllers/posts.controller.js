@@ -63,6 +63,25 @@ async function deletePostById(userId, postId) {
     }
 }
 
+async function editPostById(userId, postId, postBody) {
+    try {
+        let getPostById = await getPostFromDB(postId);
+        if(getPostById.post_user != userId) throw boom.unauthorized("NO PUEDES EDITAR POSTS DE OTRAS PERSONAS");
+    
+        let foundPost = await PostModel.findById(postId);
+    
+        if (!foundPost) {
+            throw boom.notFound('POST DOES NOT EXISTS!');
+        }
+    
+        let updatedPost = await updatePostDB(postId, postBody);
+        return updatedPost;
+    }
+    catch(err) {
+        throw err;
+    }
+}
+
 async function uploadImagePost(userId, postId, fileReq) {
     let getPostById = await getPostFromDB(postId);
     if(getPostById.post_user != userId) throw boom.unauthorized("NO PUEDES EDITAR POSTS DE OTRAS PERSONAS");
@@ -78,6 +97,16 @@ async function uploadImagePost(userId, postId, fileReq) {
 
     throw boom.notFound("NO HAY IMAGENES PARA SUBIR");
     
+}
+
+function updatePostDB(postId, dataToUpdate) {
+    return new Promise((resolve, reject) => {
+        true ? PostModel.findByIdAndUpdate(postId, dataToUpdate, {new: true}, (err, postUpdated) => {
+            if(err) reject(err);
+            if(!postUpdated) reject(boom.notFound("NO SE PUDO REALIZAR LA ACTUALIZACION"));
+            resolve({post: postUpdated});
+        }) : reject(new Error('HA OCURRIDO UN ERROR EN UNA VALIDACION INTERNA. 10003'))
+    });
 }
 
 function savePostDB(publicationObj) {
@@ -105,8 +134,9 @@ function getPeopleIFollow(userId) {
 }
 
 function getPostByPeopleIFollow(userId, peopleIFollow, page, itemsPerPage) {
+    const post_desc = { post_created_at: -1 };
     return new Promise((resolve, reject) => {
-        true ? PostModel.find({post_user: {"$in": peopleIFollow}}).sort('post_created_at').populate('post_user')
+        true ? PostModel.find({post_user: {"$in": peopleIFollow}}).sort(post_desc).populate('post_user')
                                 .paginate(page, itemsPerPage, (err, posts, totalPosts) => {
                                     if(err) reject(err);
                                     if(!posts) reject(boom.notFound("NO SE ENCONTRARON POSTS"));
@@ -117,8 +147,9 @@ function getPostByPeopleIFollow(userId, peopleIFollow, page, itemsPerPage) {
 }
 
 function getPostsFromUser(userId, page, itemsPerPage) {
+    const post_desc = { post_created_at: -1 };
     return new Promise((resolve, reject) => {
-        true ? PostModel.find({post_user: userId}).sort('post_created_at').populate('post_user')
+        true ? PostModel.find({post_user: userId}).sort(post_desc).populate('post_user')
                                 .paginate(page, itemsPerPage, (err, posts, totalPosts) => {
                                     if(err) reject(err);
                                     if(!posts) reject(boom.notFound("NO SE ENCONTRARON POSTS"));
@@ -159,4 +190,4 @@ function updateUserImageDB(postId, file_name) {
     });
 }
 
-module.exports = { savePost, getPostsFromPeopleIFollow, getPostById, deletePostById, uploadImagePost, getMyPosts }
+module.exports = { savePost, getPostsFromPeopleIFollow, getPostById, deletePostById, uploadImagePost, getMyPosts, editPostById }

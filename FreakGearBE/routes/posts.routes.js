@@ -5,7 +5,7 @@ const { validatorHandler, imageValidatorHandler } = require('../middlewares/vali
 const multipart = require('connect-multiparty');
 const md_upload = multipart({uploadDir: './uploads/posts'});
 const router = express.Router();
-const { PostBodySchema, getPaginatedPostsSchema, postIdSchema, userPostIdSchema } = require('../models/posts');
+const { PostBodySchema, getPaginatedPostsSchema, postIdSchema, userPostIdSchema, PatchBodySchema } = require('../models/posts');
 const PostController = require('../controllers/posts.controller');
 
 router.post('/', validatorHandler(PostBodySchema, 'body'), async(req, res, next) => {
@@ -54,6 +54,17 @@ router.get('/:post_id', validatorHandler(postIdSchema, 'params'), async(req, res
 router.delete('/:post_id', validatorHandler(postIdSchema, 'params'), async(req, res, next) => {
     try {
         const getPost = await PostController.deletePostById(req.user.sub, req.params.post_id);
+        res.status(200).json(getPost);
+    }
+    catch(err) {
+        next(err);
+    }
+})
+
+router.patch('/:post_id', validatorHandler(postIdSchema, 'params'), validatorHandler(PatchBodySchema, 'body'), async(req, res, next) => {
+    try {
+        const postBody = req.body;
+        const getPost = await PostController.editPostById(req.user.sub, req.params.post_id, postBody);
         res.status(200).json(getPost);
     }
     catch(err) {
